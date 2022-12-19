@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import toast from 'react-hot-toast';
 import { FiSearch } from 'react-icons/fi';
 import {
   SearchbarStyled,
@@ -12,6 +13,9 @@ export const Searchbar = ({ onSubmit }) => {
   const handleSubmit = e => {
     e.preventDefault();
     const searchQuery = e.target.elements.query.value;
+    if (searchQuery === '') {
+            toast.error('Enter data to search');
+    }
     onSubmit({ searchQuery });
     e.target.reset();
   };

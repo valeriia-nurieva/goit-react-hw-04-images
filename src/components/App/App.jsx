@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { fetchImages } from 'api';
 import toast, { Toaster } from 'react-hot-toast';
 import { AppStyled } from './App.styled';
@@ -9,20 +9,26 @@ import { Button } from 'components/Button/Button';
 import { ModalImage } from 'components/Modal/Modal';
 import { GlobalStyle } from 'components/GlobalStyle';
 
-export class App extends Component {
-  state = {
-    page: 1,
-    query: '',
-    photos: [],
-    selectedImage: false,
-  };
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  async componentDidUpdate(_, prevState) {
-    try {
-      const { page, query, photos } = this.state;
-      if (prevState.page !== page || prevState.query !== query) {
-        this.setState({ isLoading: true });
+  useEffect(() => {
+    if (query === '') {
+      return;
+    }
+    async function foo() {
+      try {
+        setIsLoading(true);
         const responce = await fetchImages(query, page);
+        if (responce.totalHits === 0) {
+          toast.error(
+            'Sorry, there are no images matching your search query. Please try again.'
+          );
+        }
         const data = responce.hits.map(
           ({ id, largeImageURL, tags, webformatURL }) => {
             return {
@@ -33,69 +39,42 @@ export class App extends Component {
             };
           }
         );
-        this.setState({
-          photos: [...photos, ...data],
-          isLoading: false,
-        });
+        setPhotos(prevPhotos => [...prevPhotos, ...data]);
+        setIsLoading(false);
+      } catch (error) {
+        toast.error('Oops! Something went wrong! Please try again.');
       }
-    } catch (error) {
-      toast.error('Oops! Something went wrong! Please try again.');
     }
-  }
+    foo();
+  }, [page, query]);
 
-  loadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const loadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  searchPhoto = ({ searchQuery }) => {
-    const { query } = this.state;
-    if (searchQuery !== query) {
-      this.setState({
-        photos: [],
-        page: 1,
-      });
-    }
-    this.setState({
-      query: searchQuery,
-      page: 1,
-    });
+  const searchPhoto = ({ searchQuery }) => {
+    setPage(1);
+    setPhotos([]);
+    setQuery(searchQuery);
   };
 
-  selectImage = imgUrl => {
-    this.setState({
-      selectedImage: imgUrl,
-    });
-  };
+  const selectImage = imgUrl => setSelectedImage(imgUrl);
 
-  resetImage = () => {
-    this.setState({
-      selectedImage: null,
-    });
-  };
+  const resetImage = () => setSelectedImage(null);
 
-  render() {
-    const { photos, isLoading, selectedImage } = this.state;
-    return (
-      <>
-        <AppStyled>
-          <Searchbar onSubmit={this.searchPhoto} />
-          {photos.length > 0 && (
-            <ImageGallery photos={photos} onSelect={this.selectImage} />
-          )}
-          {photos.length > 11 && !isLoading && (
-            <Button onClick={this.loadMore} />
-          )}
-          {isLoading && <Loader />}
-          <ModalImage
-            selectImage={selectedImage}
-            resetImage={this.resetImage}
-          />
-          <Toaster />
-          <GlobalStyle />
-        </AppStyled>
-      </>
-    );
-  }
-}
+  return (
+    <>
+      <AppStyled>
+        <Searchbar onSubmit={searchPhoto} />
+        {photos.length > 0 && (
+          <ImageGallery photos={photos} onSelect={selectImage} />
+        )}
+        {photos.length > 11 && !isLoading && <Button onClick={loadMore} />}
+        {isLoading && <Loader />}
+        <ModalImage selectImage={selectedImage} resetImage={resetImage} />
+        <Toaster />
+        <GlobalStyle />
+      </AppStyled>
+    </>
+  );
+};
